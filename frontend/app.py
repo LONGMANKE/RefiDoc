@@ -27,8 +27,9 @@ def get_current_user():
         return User.query.filter_by(username=session["username"]).first()
     return None
 
-def save_message(user, role, content):
-    db.session.add(ChatMessage(user_id=user.id, role=role, content=content))
+def save_message(user, role, content, session_id):
+    message = ChatMessage(user_id=user.id, role=role, content=content, session_id=session_id)
+    db.session.add(message)
     db.session.commit()
 
 def get_user_messages(user):
@@ -56,6 +57,7 @@ class ChatSession(db.Model):
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     role = db.Column(db.String(10))
     content = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
@@ -65,7 +67,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
-    
+
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = None
@@ -106,57 +109,80 @@ def toggle_theme():
     session["theme"] = "dark" if session.get("theme") == "light" else "light"
     return redirect(request.referrer or url_for("chat"))
 
-@app.route("/chat", methods=["GET", "POST"])
+@app.route("/chat", methods=["GET"])
 def chat():
     user = get_current_user()
     if not user:
         return redirect(url_for("login"))
 
-    # Get session id from query or create new
+    # Load or create current session
     session_id = request.args.get("session_id")
     if not session_id:
-        new_session = ChatSession(user_id=user.id)
-        db.session.add(new_session)
+        chat_session = ChatSession(user_id=user.id)
+        db.session.add(chat_session)
         db.session.commit()
-        return redirect(url_for("chat", session_id=new_session.id))
+        return redirect(url_for("chat", session_id=chat_session.id))
+    else:
+        chat_session = ChatSession.query.filter_by(id=session_id, user_id=user.id).first()
+        if not chat_session:
+            return redirect(url_for("chat"))
 
-    current_session = ChatSession.query.filter_by(id=session_id, user_id=user.id).first()
-    if not current_session:
-        return redirect(url_for("chat"))  # fallback to a new session
-
-    if request.method == "POST":
-        prompt = request.form["prompt"]
-        db.session.add(ChatMessage(session_id=current_session.id, role="user", content=prompt))
-        db.session.commit()
-
-        # Query logic (same as before)
-        response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
-        if response.status_code == 200:
-            context = "\n\n".join([r["content"] for r in response.json()["results"]])
-            refined_prompt = f"Answer the user's question clearly and helpfully based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
-            gpt_response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "gpt-3.5-turbo", "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": refined_prompt}
-                ]}
-            )
-            answer = gpt_response.json()['choices'][0]['message']['content'] if gpt_response.status_code == 200 else "Error with GPT"
-        else:
-            answer = "Error from document search"
-
-        db.session.add(ChatMessage(session_id=current_session.id, role="assistant", content=answer))
-        db.session.commit()
-        return redirect(url_for("chat", session_id=current_session.id))
-
-    # Get all sessions
+    messages = ChatMessage.query.filter_by(session_id=chat_session.id).order_by(ChatMessage.timestamp).all()
     sessions = ChatSession.query.filter_by(user_id=user.id).order_by(ChatSession.created_at.desc()).all()
-    messages = ChatMessage.query.filter_by(session_id=current_session.id).order_by(ChatMessage.timestamp).all()
 
-    return render_template("chat.html", username=user.username, role="admin" if user.is_admin else "user",
-                           sessions=sessions, current_session=current_session, messages=messages,
+    return render_template("chat.html",
+                           messages=messages,
+                           sessions=sessions,
+                           current_session=chat_session,
+                           username=user.username,
+                           role="admin" if user.is_admin else "user",
                            theme=session.get("theme", "light"))
+
+@app.route("/send_message", methods=["POST"])
+def send_message():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    prompt = data.get("prompt", "")
+    session_id = data.get("session_id")
+
+    if not prompt or not session_id:
+        return jsonify({"error": "Missing prompt or session ID"}), 400
+
+    # Save user message
+    chat_session = ChatSession.query.filter_by(id=session_id, user_id=user.id).first()
+    if not chat_session:
+        return jsonify({"error": "Invalid session"}), 404
+
+    save_message(user, "user", prompt, session_id)
+
+    # Process message (OpenAI + FastAPI)
+    response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
+    results = response.json()["results"]
+    context = "\n\n".join([r["content"] for r in results])
+    refined_prompt = f"Answer the user's question clearly and helpfully based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
+
+    gpt_response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": refined_prompt}
+            ]
+        }
+    )
+
+    answer = gpt_response.json()["choices"][0]["message"]["content"]
+    save_message(user, "assistant", answer, session_id)
+
+    return jsonify({"response": answer})
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():

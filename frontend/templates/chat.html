@@ -119,10 +119,11 @@
 
       <!-- Input -->
       <div class="chat-input">
-        <form method="POST">
-          <input type="text" name="prompt" class="form-control" placeholder="Ask something..." required>
+        <form id="chat-form">
+          <input type="text" id="prompt" class="form-control" placeholder="Ask something..." required>
           <button type="submit" class="btn btn-primary">Send</button>
         </form>
+        <div id="loading" class="mt-2 text-muted" style="display:none;">💬 Thinking...</div>
       </div>
     </div>
   </div>
@@ -133,6 +134,48 @@
       const chat = document.getElementById("chat-history");
       chat.scrollTop = chat.scrollHeight;
     };
+  </script>
+
+  <script>
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("prompt");
+    const chat = document.getElementById("chat-history");
+    const loading = document.getElementById("loading");
+    const sessionId = "{{ current_session.id }}";
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      const userBubble = `
+        <div class="chat-message user">
+          <div class="chat-bubble">${userText}</div>
+          <div class="small text-muted">You • now</div>
+        </div>`;
+      chat.innerHTML += userBubble;
+      chat.scrollTop = chat.scrollHeight;
+
+      input.value = "";
+      loading.style.display = "block";
+
+      const res = await fetch("/send_message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: userText, session_id: sessionId })
+      });
+
+      const data = await res.json();
+      loading.style.display = "none";
+
+      const aiBubble = `
+        <div class="chat-message assistant">
+          <div class="chat-bubble">${data.response}</div>
+          <div class="small text-muted">Assistant • now</div>
+        </div>`;
+      chat.innerHTML += aiBubble;
+      chat.scrollTop = chat.scrollHeight;
+    });
   </script>
 </body>
 </html>
