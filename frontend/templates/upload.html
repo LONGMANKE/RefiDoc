@@ -2,36 +2,60 @@
 <html lang="en" data-bs-theme="{{ theme }}">
 <head>
   <meta charset="UTF-8">
-  <title>Upload Document</title>
+  <title>Upload Document - RefiDoc</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary px-3">
+  <nav class="navbar navbar-expand-lg bg-body-tertiary px-3">
     <div class="container-fluid">
-      <span class="navbar-brand">Admin Panel - {{ username }}</span>
+      <span class="navbar-brand fw-semibold">📁 Admin Panel - {{ username }}</span>
       <div>
-        <a href="/chat" class="btn btn-outline-secondary me-2">Back to Chat</a>
-        <a href="/toggle-theme" class="btn btn-outline-info me-2">Toggle Theme</a>
-        <a href="/logout" class="btn btn-outline-danger">Logout</a>
+        <a href="{{ url_for('chat') }}" class="btn btn-outline-secondary me-2">Back to Chat</a>
+        <a href="{{ url_for('toggle_theme') }}" class="btn btn-outline-info me-2">Toggle Theme</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Logout</a>
       </div>
     </div>
   </nav>
 
-  <div class="container mt-4">
-    <h4 class="mb-3">📤 Upload Document</h4>
-    {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-    <form method="POST" enctype="multipart/form-data">
-      <div class="mb-3">
-        <input class="form-control" type="file" name="file" required>
+  <div class="container my-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4 class="mb-3">📤 Upload Document</h4>
+
+        {% if message %}
+          <div class="alert alert-info">{{ message }}</div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label">Choose File (.pdf or .txt)</label>
+            <input class="form-control" type="file" name="file" required>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col">
+              <input class="form-control" type="number" name="chunk_size" placeholder="Chunk Size" value="1000">
+            </div>
+            <div class="col">
+              <input class="form-control" type="number" name="chunk_overlap" placeholder="Chunk Overlap" value="200">
+            </div>
+          </div>
+
+          <button class="btn btn-primary w-100" type="submit">Upload & Index</button>
+        </form>
       </div>
-      <div class="mb-3">
-        <input class="form-control" type="number" name="chunk_size" placeholder="Chunk Size (default 1000)" value="1000">
-      </div>
-      <div class="mb-3">
-        <input class="form-control" type="number" name="chunk_overlap" placeholder="Chunk Overlap (default 200)" value="200">
-      </div>
-      <button class="btn btn-primary">Upload & Index</button>
-    </form>
+    </div>
+
+    <div class="text-center mt-4">
+      <p class="text-muted small">📊 <strong>Index Stats</strong></p>
+      <ul class="list-unstyled">
+        <li>Total Documents: <strong>{{ stats.total_documents }}</strong></li>
+        <li>Total Chunks: <strong>{{ stats.total_chunks }}</strong></li>
+        <li>Last Updated: <strong>{{ stats.last_updated }}</strong></li>
+      </ul>
+    </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

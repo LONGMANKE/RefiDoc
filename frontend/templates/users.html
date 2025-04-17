@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="{{ theme }}">
+<head>
+  <meta charset="UTF-8" />
+  <title>Manage Users</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg bg-body-tertiary px-3">
+    <div class="container-fluid">
+      <span class="navbar-brand fw-semibold">👥 Admin Panel - {{ username }}</span>
+      <div>
+        <a href="{{ url_for('chat') }}" class="btn btn-outline-secondary me-2">Back to Chat</a>
+        <a href="{{ url_for('toggle_theme') }}" class="btn btn-outline-info me-2">Toggle Theme</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="mb-0">👥 Manage Users</h4>
+    </div>
+
+    {% if message %}
+      <div class="alert alert-info">{{ message }}</div>
+    {% endif %}
+
+    <div class="card shadow-sm rounded">
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 10%">ID</th>
+              <th style="width: 30%">Username</th>
+              <th style="width: 20%">Role</th>
+              <th style="width: 20%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>{{ u.id }}</td>
+              <td>{{ u.username }}</td>
+              <td>
+                {% if u.is_admin %}
+                  <span class="badge bg-primary">Admin</span>
+                {% else %}
+                  <span class="badge bg-secondary">User</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.username != username %}
+                <!-- Delete Button trigger modal -->
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal{{ u.id }}">
+                  Delete
+                </button>
+
+                <!-- Modal -->
+                <div class="modal fade" id="confirmDeleteModal{{ u.id }}" tabindex="-1" aria-labelledby="confirmDeleteLabel{{ u.id }}" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="confirmDeleteLabel{{ u.id }}">Confirm Deletion</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        Are you sure you want to delete user <strong>{{ u.username }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}">
+                          <button type="submit" class="btn btn-danger btn-sm">Yes, Delete</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% else %}
+                <span class="text-muted">(You)</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

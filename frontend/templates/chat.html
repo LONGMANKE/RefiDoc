@@ -1,181 +1,267 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="{{ theme }}">
-<head>
-  <meta charset="UTF-8">
-  <title>Refidoc Chat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body, html {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-    }
-    .chat-wrapper {
-      display: flex;
-      height: 100vh;
-    }
-    .sidebar {
-      width: 260px;
-      background-color: var(--bs-dark);
-      color: white;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .sidebar .top-section {
-      flex-grow: 1;
-    }
-    .sidebar h4 {
-      color: #fff;
-      margin-bottom: 1rem;
-    }
-    .chat-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 1rem;
-      overflow: hidden;
-    }
-    .chat-history {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 10px;
-    }
-    .chat-message {
-      margin-bottom: 0.75rem;
-    }
-    .chat-message.user {
-      text-align: right;
-    }
-    .chat-message.assistant {
-      text-align: left;
-    }
-    .chat-bubble {
-      display: inline-block;
-      padding: 10px 15px;
-      border-radius: 15px;
-      max-width: 80%;
-    }
-    .user .chat-bubble {
-      background-color: #0d6efd;
-      color: white;
-    }
-    .assistant .chat-bubble {
-      background-color: #e9ecef;
-      color: black;
-    }
-    .chat-input {
-      border-top: 1px solid #ccc;
-      padding: 10px 0;
-    }
-    .chat-input form {
-      display: flex;
-      gap: 10px;
-    }
-    .chat-input input {
-      flex: 1;
-    }
-  </style>
-</head>
-<body class="bg-body">
-  <div class="chat-wrapper">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="top-section">
-        <h4>📄 Refidoc</h4>
-        <p>👋 {{ username }} ({{ role }})</p>
-        <hr>
-        <a href="{{ url_for('toggle_theme') }}" class="btn btn-sm btn-outline-light w-100 mb-2">🌓 Theme</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger w-100 mb-2">🚪 Logout</a>
-        {% if role == "admin" %}
-          <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary w-100 mb-2">📤 Upload Docs</a>
-        {% endif %}
-        <a href="{{ url_for('chat') }}" class="btn btn-sm btn-primary w-100 mb-2">➕ New Chat</a>
-        <div class="list-group">
-          {% for s in sessions %}
-            <a href="{{ url_for('chat', session_id=s.id) }}"
-               class="list-group-item list-group-item-action {% if s.id == current_session.id %}active{% endif %}">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Refidoc Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body,
+      html {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+      .chat-wrapper {
+        display: flex;
+        height: 100vh;
+      }
+      .sidebar {
+        width: 260px;
+        background-color: var(--bs-dark);
+        color: white;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .sidebar .top-section {
+        flex-grow: 1;
+      }
+      .sidebar h4 {
+        color: #fff;
+        margin-bottom: 1rem;
+      }
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        overflow: hidden;
+        position: relative;
+      }
+      .chat-header {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .dropdown-toggle::after {
+        margin-left: 0.5rem;
+      }
+      .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+      .chat-message {
+        margin-bottom: 0.75rem;
+      }
+      .chat-message.user {
+        text-align: right;
+      }
+      .chat-message.assistant {
+        text-align: left;
+      }
+      .chat-bubble {
+        display: inline-block;
+        padding: 10px 15px;
+        border-radius: 15px;
+        max-width: 80%;
+      }
+      .user .chat-bubble {
+        background-color: #0d6efd;
+        color: white;
+      }
+      .assistant .chat-bubble {
+        background-color: #f5f5f5;
+        color: #212529;
+        padding: 1rem;
+        border-radius: 15px;
+        line-height: 1.6;
+        font-size: 1rem;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        white-space: pre-line;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .chat-input {
+        border-top: 1px solid #ccc;
+        padding: 10px 0;
+      }
+      .chat-input form {
+        display: flex;
+        gap: 10px;
+      }
+      .chat-input input {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body class="bg-body">
+    <div class="chat-wrapper">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="top-section">
+          <div
+            class="text-center mb-3"
+            style="background-color: white; padding: 10px; border-radius: 8px"
+          >
+            <img
+              src="{{ url_for('static', filename='refidoc-logo.png') }}"
+              alt="RefiDoc Logo"
+              style="max-width: 100%; height: 50px"
+            />
+          </div>
+          <hr />
+          {% if role == "admin" %}
+          <a
+            href="{{ url_for('upload') }}"
+            class="btn btn-sm btn-outline-primary w-100 mb-2"
+            >📤 Upload Docs</a
+          >
+          <a
+            href="{{ url_for('documents') }}"
+            class="btn btn-sm btn-outline-secondary w-100 mb-2"
+            >📁 Uploaded Docs</a
+          >
+          <a
+            href="{{ url_for('manage_users') }}"
+            class="btn btn-sm btn-outline-light w-100 mb-2"
+            >👥 Manage Users</a
+          >
+          {% endif %}
+          <a
+            href="{{ url_for('chat') }}"
+            class="btn btn-sm btn-primary w-100 mb-2"
+            >➕ New Chat</a
+          >
+          <div class="list-group">
+            {% for s in sessions %}
+            <a
+              href="{{ url_for('chat', session_id=s.id) }}"
+              class="list-group-item list-group-item-action {% if s.id == current_session.id %}active{% endif %}"
+            >
               Chat {{ loop.index }} • {{ s.created_at.strftime("%b %d") }}
             </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Chat -->
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="dropdown">
+            <button
+              class="btn btn-outline-secondary dropdown-toggle"
+              type="button"
+              id="userDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              👤 {{ username }}
+            </button>
+            <ul
+              class="dropdown-menu dropdown-menu-end"
+              aria-labelledby="userDropdown"
+            >
+              <li><a class="dropdown-item disabled">Profile</a></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('toggle_theme') }}"
+                  >🌓 Theme</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item text-danger"
+                  href="{{ url_for('logout') }}"
+                  >Logout</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="chat-history scrollable" id="chat-history">
+          {% for msg in messages %}
+          <div class="chat-message {{ msg.role }}">
+            <div class="chat-bubble">{{ msg.content | safe }}</div>
+            <div class="small text-muted">
+              {{ msg.role.capitalize() }} • {{ msg.timestamp.strftime("%Y-%m-%d
+              %H:%M") }}
+            </div>
+          </div>
           {% endfor %}
+        </div>
+
+        <!-- Input -->
+        <div class="chat-input">
+          <form id="chat-form">
+            <input
+              type="text"
+              id="prompt"
+              class="form-control"
+              placeholder="Ask something..."
+              required
+            />
+            <button type="submit" class="btn btn-primary">Send</button>
+          </form>
+          <div id="loading" class="mt-2 text-muted" style="display: none">
+            💬 Thinking...
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Chat -->
-    <div class="chat-container">
-      <div class="chat-history scrollable" id="chat-history">
-        {% for msg in messages %}
-          <div class="chat-message {{ msg.role }}">
-            <div class="chat-bubble">{{ msg.content | safe }}</div>
-            <div class="small text-muted">
-              {{ msg.role.capitalize() }} • {{ msg.timestamp.strftime("%Y-%m-%d %H:%M") }}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      window.onload = () => {
+        const chat = document.getElementById("chat-history");
+        chat.scrollTop = chat.scrollHeight;
+      };
 
-      <!-- Input -->
-      <div class="chat-input">
-        <form id="chat-form">
-          <input type="text" id="prompt" class="form-control" placeholder="Ask something..." required>
-          <button type="submit" class="btn btn-primary">Send</button>
-        </form>
-        <div id="loading" class="mt-2 text-muted" style="display:none;">💬 Thinking...</div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Scroll to bottom on load
-    window.onload = () => {
+      const form = document.getElementById("chat-form");
+      const input = document.getElementById("prompt");
       const chat = document.getElementById("chat-history");
-      chat.scrollTop = chat.scrollHeight;
-    };
-  </script>
+      const loading = document.getElementById("loading");
+      const sessionId = "{{ current_session.id }}";
 
-  <script>
-    const form = document.getElementById("chat-form");
-    const input = document.getElementById("prompt");
-    const chat = document.getElementById("chat-history");
-    const loading = document.getElementById("loading");
-    const sessionId = "{{ current_session.id }}";
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userText = input.value.trim();
+        if (!userText) return;
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const userText = input.value.trim();
-      if (!userText) return;
+        const userBubble = `
+          <div class="chat-message user">
+            <div class="chat-bubble">${userText}</div>
+            <div class="small text-muted">You • now</div>
+          </div>`;
+        chat.innerHTML += userBubble;
+        chat.scrollTop = chat.scrollHeight;
 
-      const userBubble = `
-        <div class="chat-message user">
-          <div class="chat-bubble">${userText}</div>
-          <div class="small text-muted">You • now</div>
-        </div>`;
-      chat.innerHTML += userBubble;
-      chat.scrollTop = chat.scrollHeight;
+        input.value = "";
+        loading.style.display = "block";
 
-      input.value = "";
-      loading.style.display = "block";
+        const res = await fetch("/send_message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: userText, session_id: sessionId }),
+        });
 
-      const res = await fetch("/send_message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: userText, session_id: sessionId })
+        const data = await res.json();
+        loading.style.display = "none";
+
+        const aiBubble = `
+          <div class="chat-message assistant">
+            <div class="chat-bubble">${data.response}</div>
+            <div class="small text-muted">Assistant • now</div>
+          </div>`;
+        chat.innerHTML += aiBubble;
+        chat.scrollTop = chat.scrollHeight;
       });
-
-      const data = await res.json();
-      loading.style.display = "none";
-
-      const aiBubble = `
-        <div class="chat-message assistant">
-          <div class="chat-bubble">${data.response}</div>
-          <div class="small text-muted">Assistant • now</div>
-        </div>`;
-      chat.innerHTML += aiBubble;
-      chat.scrollTop = chat.scrollHeight;
-    });
-  </script>
-</body>
+    </script>
+  </body>
 </html>

@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Any
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
@@ -139,6 +140,26 @@ def load_index_metadata() -> dict:
     return metadata
 
 # Endpoints
+@app.get("/files", response_model=List[str])
+def list_uploaded_files():
+    try:
+        files = os.listdir("uploads")
+        return sorted(files)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.delete("/files/{filename}")
+def delete_uploaded_file(filename: str):
+    file_path = os.path.join("uploads", filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        os.remove(file_path)
+        return {"message": f"{filename} deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/upload", status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
