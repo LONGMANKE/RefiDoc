@@ -16,11 +16,16 @@
       height: 100vh;
     }
     .sidebar {
-      width: 250px;
+      width: 260px;
       background-color: var(--bs-dark);
       color: white;
       padding: 1rem;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .sidebar .top-section {
+      flex-grow: 1;
     }
     .sidebar h4 {
       color: #fff;
@@ -38,6 +43,9 @@
       overflow-y: auto;
       padding-right: 10px;
     }
+    .chat-message {
+      margin-bottom: 0.75rem;
+    }
     .chat-message.user {
       text-align: right;
     }
@@ -48,7 +56,6 @@
       display: inline-block;
       padding: 10px 15px;
       border-radius: 15px;
-      margin-bottom: 10px;
       max-width: 80%;
     }
     .user .chat-bubble {
@@ -61,7 +68,7 @@
     }
     .chat-input {
       border-top: 1px solid #ccc;
-      padding: 10px;
+      padding: 10px 0;
     }
     .chat-input form {
       display: flex;
@@ -70,23 +77,31 @@
     .chat-input input {
       flex: 1;
     }
-    .scrollable {
-      scroll-behavior: smooth;
-    }
   </style>
 </head>
 <body class="bg-body">
   <div class="chat-wrapper">
     <!-- Sidebar -->
     <div class="sidebar">
-      <h4>📄 Refidoc</h4>
-      <p>👋 {{ username }} ({{ role }})</p>
-      <hr>
-      <a href="{{ url_for('toggle_theme') }}" class="btn btn-sm btn-outline-light w-100 mb-2">🌓 Theme</a>
-      <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger w-100 mb-2">🚪 Logout</a>
-      {% if role == "admin" %}
-        <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary w-100">📤 Upload Docs</a>
-      {% endif %}
+      <div class="top-section">
+        <h4>📄 Refidoc</h4>
+        <p>👋 {{ username }} ({{ role }})</p>
+        <hr>
+        <a href="{{ url_for('toggle_theme') }}" class="btn btn-sm btn-outline-light w-100 mb-2">🌓 Theme</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger w-100 mb-2">🚪 Logout</a>
+        {% if role == "admin" %}
+          <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary w-100 mb-2">📤 Upload Docs</a>
+        {% endif %}
+        <a href="{{ url_for('chat') }}" class="btn btn-sm btn-primary w-100 mb-2">➕ New Chat</a>
+        <div class="list-group">
+          {% for s in sessions %}
+            <a href="{{ url_for('chat', session_id=s.id) }}"
+               class="list-group-item list-group-item-action {% if s.id == current_session.id %}active{% endif %}">
+              Chat {{ loop.index }} • {{ s.created_at.strftime("%b %d") }}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
     </div>
 
     <!-- Main Chat -->
