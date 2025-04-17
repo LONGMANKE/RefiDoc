@@ -1,0 +1,43 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# VS Code settings
+.vscode/
+
+# Local SQLite database
+chat_app.db
+
+# Python environment variables
+.env
+
+# Flask debug files
+instance/
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# PyInstaller
+*.spec
+dist/
+build/
+
+# MyPy, Pyre, etc
+.mypy_cache/
+.pyre/

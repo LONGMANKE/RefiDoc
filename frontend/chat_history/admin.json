@@ -1,0 +1,18 @@
+[
+  {
+    "role": "user",
+    "content": "I want to see presodent of Kenya dancing "
+  },
+  {
+    "role": "assistant",
+    "content": "I'm not able to help with that request. If you have any other questions or need assistance, feel free to ask!"
+  },
+  {
+    "role": "user",
+    "content": "mux isuzu "
+  },
+  {
+    "role": "assistant",
+    "content": "The Isuzu mu-X is a 7-seat SUV that combines power, safety, and comfort. It boasts a 5-star ANCAP safety rating with advanced driver assistance systems and seven airbags. The mu-X is powered by a choice of a 3-liter engine with 190HP or a 1.9-liter engine with 149HP, both paired with a 6-speed automatic transmission. It offers a luxurious interior with an electrically adjustable driver's seat, multiple seating configurations, and innovative features like USB charging ports and individual air-conditioning vents. Additionally, the mu-X has modern technology such as a remote engine start feature and a smart MID display. Whether in the city or off-road, the Isuzu mu-X promises a perfect blend of performance, reliability, and functionality tailored to Kenyan conditions."
+  }
+]
