@@ -2,55 +2,122 @@
 <html lang="en" data-bs-theme="{{ theme }}">
 <head>
   <meta charset="UTF-8">
-  <title>Chat</title>
+  <title>Refidoc Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    .chat-box {
-      max-height: 70vh;
-      overflow-y: auto;
-      padding: 1rem;
-      border: 1px solid #dee2e6;
-      border-radius: 10px;
-      background-color: var(--bs-body-bg);
+    body, html {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
     }
-    .message.user { text-align: right; }
-    .message.assistant { text-align: left; }
-    .timestamp { font-size: 0.75rem; color: gray; }
+    .chat-wrapper {
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: var(--bs-dark);
+      color: white;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .sidebar h4 {
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow: hidden;
+    }
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    .chat-message.user {
+      text-align: right;
+    }
+    .chat-message.assistant {
+      text-align: left;
+    }
+    .chat-bubble {
+      display: inline-block;
+      padding: 10px 15px;
+      border-radius: 15px;
+      margin-bottom: 10px;
+      max-width: 80%;
+    }
+    .user .chat-bubble {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .assistant .chat-bubble {
+      background-color: #e9ecef;
+      color: black;
+    }
+    .chat-input {
+      border-top: 1px solid #ccc;
+      padding: 10px;
+    }
+    .chat-input form {
+      display: flex;
+      gap: 10px;
+    }
+    .chat-input input {
+      flex: 1;
+    }
+    .scrollable {
+      scroll-behavior: smooth;
+    }
   </style>
 </head>
-<body class="bg-body-secondary">
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2>🧠 AI Chat</h2>
-      <div>
-        <span class="me-3">👋 Hello, {{ username }} ({{ role }})</span>
-        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger">Logout</a>
-        <a href="{{ url_for('toggle_theme') }}" class="btn btn-sm btn-outline-secondary">Switch Theme</a>
-        {% if role == "admin" %}
-          <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary">Upload Docs</a>
-        {% endif %}
-      </div>
+<body class="bg-body">
+  <div class="chat-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h4>📄 Refidoc</h4>
+      <p>👋 {{ username }} ({{ role }})</p>
+      <hr>
+      <a href="{{ url_for('toggle_theme') }}" class="btn btn-sm btn-outline-light w-100 mb-2">🌓 Theme</a>
+      <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger w-100 mb-2">🚪 Logout</a>
+      {% if role == "admin" %}
+        <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary w-100">📤 Upload Docs</a>
+      {% endif %}
     </div>
 
-    <div class="chat-box mb-3">
-      {% for msg in messages %}
-        <div class="message {{ msg.role }}">
-          <div class="alert {{ 'alert-primary' if msg.role == 'user' else 'alert-success' }}">
-            {{ msg.content|safe }}
+    <!-- Main Chat -->
+    <div class="chat-container">
+      <div class="chat-history scrollable" id="chat-history">
+        {% for msg in messages %}
+          <div class="chat-message {{ msg.role }}">
+            <div class="chat-bubble">{{ msg.content | safe }}</div>
+            <div class="small text-muted">
+              {{ msg.role.capitalize() }} • {{ msg.timestamp.strftime("%Y-%m-%d %H:%M") }}
+            </div>
           </div>
-          <div class="timestamp">
-            <span>{{ msg.role.capitalize() }}</span> • {{ msg.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-
-    <form method="POST">
-      <div class="input-group">
-        <input type="text" name="prompt" class="form-control" placeholder="Type your message..." required>
-        <button type="submit" class="btn btn-primary">Send</button>
+        {% endfor %}
       </div>
-    </form>
+
+      <!-- Input -->
+      <div class="chat-input">
+        <form method="POST">
+          <input type="text" name="prompt" class="form-control" placeholder="Ask something..." required>
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </div>
+    </div>
   </div>
+
+  <script>
+    // Scroll to bottom on load
+    window.onload = () => {
+      const chat = document.getElementById("chat-history");
+      chat.scrollTop = chat.scrollHeight;
+    };
+  </script>
 </body>
 </html>
