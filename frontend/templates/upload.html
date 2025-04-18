@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <title>Upload Document - RefiDoc</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    #drop-area {
+      border: 2px dashed #6c757d;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      color: #6c757d;
+      cursor: pointer;
+    }
+    #drop-area.dragover {
+      background-color: #e9ecef;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary px-3">
@@ -22,32 +35,32 @@
       <div class="card-body">
         <h4 class="mb-3">📤 Upload Document</h4>
 
-        {% if message %}
-          <div class="alert alert-info">{{ message }}</div>
-        {% endif %}
+        <div id="alertBox" class="alert alert-info" style="display: none;"></div>
 
-        <form method="POST" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label class="form-label">Choose File (.pdf or .txt)</label>
-            <input class="form-control" type="file" name="file" id="fileInput" required accept=".pdf,.txt">
+        <div id="drop-area">
+          <p>📂 Drag & drop a PDF or TXT file here, or click to browse</p>
+          <input type="file" id="fileInput" hidden accept=".pdf,.txt">
+        </div>
+
+        <div id="previewContainer" class="mb-3 mt-3" style="display:none;">
+          <label class="form-label">📄 PDF Preview</label>
+          <iframe id="pdfPreview" class="w-100 border" style="height: 500px;"></iframe>
+        </div>
+
+        <div class="row g-3 mb-3 mt-3">
+          <div class="col">
+            <input class="form-control" type="number" id="chunkSize" placeholder="Chunk Size" value="1000">
           </div>
-
-          <div id="previewContainer" class="mb-3" style="display:none;">
-            <label class="form-label">📄 PDF Preview</label>
-            <iframe id="pdfPreview" class="w-100 border" style="height: 500px;"></iframe>
+          <div class="col">
+            <input class="form-control" type="number" id="chunkOverlap" placeholder="Chunk Overlap" value="200">
           </div>
+        </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col">
-              <input class="form-control" type="number" name="chunk_size" placeholder="Chunk Size" value="1000">
-            </div>
-            <div class="col">
-              <input class="form-control" type="number" name="chunk_overlap" placeholder="Chunk Overlap" value="200">
-            </div>
-          </div>
+        <div class="progress mb-3" id="progressWrapper" style="height: 20px; display: none;">
+          <div id="uploadProgress" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+        </div>
 
-          <button class="btn btn-primary w-100" type="submit">Upload & Index</button>
-        </form>
+        <button class="btn btn-success w-100" id="uploadBtn">Upload & Index</button>
       </div>
     </div>
 
@@ -62,20 +75,78 @@
   </div>
 
   <script>
+    const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('fileInput');
-    const previewContainer = document.getElementById('previewContainer');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const alertBox = document.getElementById('alertBox');
     const pdfPreview = document.getElementById('pdfPreview');
+    const previewContainer = document.getElementById('previewContainer');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('uploadProgress');
 
-    fileInput.addEventListener('change', function () {
-      const file = this.files[0];
+    let selectedFile = null;
+
+    dropArea.addEventListener('click', () => fileInput.click());
+    dropArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropArea.classList.add('dragover');
+    });
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+    dropArea.addEventListener('drop', e => {
+      e.preventDefault();
+      dropArea.classList.remove('dragover');
+      selectedFile = e.dataTransfer.files[0];
+      handleFilePreview(selectedFile);
+    });
+    fileInput.addEventListener('change', e => {
+      selectedFile = e.target.files[0];
+      handleFilePreview(selectedFile);
+    });
+
+    function handleFilePreview(file) {
       if (file && file.type === 'application/pdf') {
-        const fileURL = URL.createObjectURL(file);
-        pdfPreview.src = fileURL;
+        pdfPreview.src = URL.createObjectURL(file);
         previewContainer.style.display = 'block';
       } else {
-        pdfPreview.src = '';
         previewContainer.style.display = 'none';
       }
+    }
+
+    uploadBtn.addEventListener('click', () => {
+      if (!selectedFile) return alert('Please select a file first.');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('chunk_size', document.getElementById('chunkSize').value);
+      formData.append('chunk_overlap', document.getElementById('chunkOverlap').value);
+
+      progressWrapper.style.display = 'block';
+      progressBar.style.width = '0%';
+      progressBar.textContent = '0%';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload');
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percent + '%';
+          progressBar.textContent = percent + '%';
+        }
+      });
+
+      xhr.onload = () => {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          alertBox.style.display = 'block';
+          alertBox.textContent = res.message || 'Upload complete!';
+        } catch {
+          alertBox.style.display = 'block';
+          alertBox.classList.replace('alert-info', 'alert-danger');
+          alertBox.textContent = '❌ Error occurred while uploading.';
+        }
+      };
+      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+      xhr.send(formData);
     });
   </script>
 

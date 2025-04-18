@@ -172,7 +172,6 @@ def upload():
     message = None
     stats = {"total_documents": "?", "total_chunks": "?", "last_updated": "?"}
 
-    # Fetch stats from FastAPI
     try:
         stats_response = requests.get(f"{API_BASE_URL}/stats")
         if stats_response.ok:
@@ -180,7 +179,6 @@ def upload():
     except Exception as e:
         print("Error fetching stats:", e)
 
-    # Handle file upload
     if request.method == "POST":
         file = request.files.get("file")
         chunk_size = request.form.get("chunk_size", 1000)
@@ -194,14 +192,20 @@ def upload():
 
                 if res.status_code == 201:
                     message = res.json().get("message", "Upload successful.")
-                    # Refresh stats
+                    # Only return JSON if it's an XMLHttpRequest (AJAX)
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify({"message": message})
                     stats = requests.get(f"{API_BASE_URL}/stats").json()
                 else:
                     message = res.json().get("detail", "Something went wrong.")
             except Exception as e:
                 message = f"Upload failed: {str(e)}"
+
         else:
             message = "Please select a file."
+
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"message": message})
 
     return render_template(
         "upload.html",
@@ -210,7 +214,7 @@ def upload():
         stats=stats,
         theme=session.get("theme", "light")
     )
-
+    
 @app.route("/documents")
 def documents():
     user = get_current_user()
