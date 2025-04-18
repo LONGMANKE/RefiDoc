@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- App Setup ---
 load_dotenv()
@@ -30,6 +30,7 @@ class ChatSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    first_prompt = db.Column(db.String(255))  # NEW: to display summary
     messages = db.relationship("ChatMessage", backref="session", lazy=True)
 
 class ChatMessage(db.Model):
@@ -118,8 +119,9 @@ def chat():
         username=user.username,
         role="admin" if user.is_admin else "user",
         theme=session.get("theme", "light"),
+        current_time=datetime.now(),
+        timedelta=timedelta  # 👈 This line fixes your error!
     )
-
 @app.route("/send_message", methods=["POST"])
 def send_message():
     user = get_current_user()
@@ -129,6 +131,7 @@ def send_message():
     data = request.get_json()
     prompt = data.get("prompt")
     session_id = data.get("session_id")
+
     if not prompt or not session_id:
         return jsonify({"error": "Missing prompt or session ID"}), 400
 
@@ -136,13 +139,23 @@ def send_message():
     if not chat_session:
         return jsonify({"error": "Invalid session"}), 404
 
+    # 🔥 Save the first user message as the preview if it's the first one
+    if not chat_session.first_prompt:
+        chat_session.first_prompt = prompt[:255]  # limit to 255 chars
+        db.session.commit()
+
+    # Save the user's message
     save_message(user, "user", prompt, session_id)
 
+    # Query the FastAPI backend for relevant context
     response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
     results = response.json()["results"]
     context = "\n\n".join([r["content"] for r in results])
+    
+    # Refine the prompt for OpenAI
     refined_prompt = f"Answer the user's question clearly based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
 
+    # Send to OpenAI
     gpt_response = requests.post(
         "https://api.openai.com/v1/chat/completions",
         headers={
@@ -159,6 +172,8 @@ def send_message():
     )
 
     answer = gpt_response.json()["choices"][0]["message"]["content"]
+    
+    # Save assistant response
     save_message(user, "assistant", answer, session_id)
 
     return jsonify({"response": answer})
@@ -266,6 +281,28 @@ def delete_user(user_id):
         db.session.commit()
 
     return redirect(url_for("manage_users"))
+@app.route("/delete_chat/<int:chat_id>", methods=["POST"])
+def delete_chat(chat_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    session_to_delete = ChatSession.query.filter_by(id=chat_id, user_id=user.id).first()
+    if session_to_delete:
+        ChatMessage.query.filter_by(session_id=session_to_delete.id).delete()
+        db.session.delete(session_to_delete)
+        db.session.commit()
+
+    # Redirect to most recent session or create new
+    remaining = ChatSession.query.filter_by(user_id=user.id).order_by(ChatSession.created_at.desc()).first()
+    if remaining:
+        return redirect(url_for("chat", session_id=remaining.id))
+    else:
+        # No sessions left, create one
+        new_session = ChatSession(user_id=user.id)
+        db.session.add(new_session)
+        db.session.commit()
+        return redirect(url_for("chat", session_id=new_session.id))
 
 # --- Entry Point ---
 if __name__ == "__main__":
