@@ -138,7 +138,10 @@ def register():
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
+# --- Routes ---
+@app.route("/about")
+def about():
+    return render_template("about.html")
 @app.route("/toggle-theme")
 def toggle_theme():
     session["theme"] = "dark" if session.get("theme") == "light" else "light"

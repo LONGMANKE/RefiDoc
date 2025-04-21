@@ -1,331 +1,378 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="{{ theme }}">
-<head>
-  <meta charset="UTF-8" />
-  <title>Refidoc Chat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-    }
+<html lang="en">
+<!-- <html lang="en" data-bs-theme="{{ theme }}"> -->
+  <head>
+    <meta charset="UTF-8" />
+    <title>Refidoc Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
 
-    .chat-wrapper {
-      display: flex;
-      height: 100vh;
-    }
+      .chat-wrapper {
+        display: flex;
+        height: 100vh;
+      }
 
-    .sidebar {
-      width: 220px;
-      background-color: #1e1e2f;
-      color: #fff;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #2c2c3e;
-    }
+      .sidebar {
+        width: 220px;
+        background-color: #1e1e2f;
+        color: #fff;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #2c2c3e;
+      }
 
-    .logo-wrapper {
-      background-color: #ffffff;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
+      .logo-wrapper {
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
 
-    .logo-wrapper img {
-      max-height: 40px;
-      object-fit: contain;
-      filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.2));
-    }
+      .logo-wrapper img {
+        max-height: 40px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.2));
+      }
 
-    nav a {
-      font-size: 0.9rem;
-      color: #ddd;
-      padding: 0.5rem;
-      margin-bottom: 0.3rem;
-      border-radius: 8px;
-      display: block;
-      text-decoration: none;
-      transition: background 0.2s;
-    }
+      nav a {
+        font-size: 0.9rem;
+        color: #ddd;
+        padding: 0.5rem;
+        margin-bottom: 0.3rem;
+        border-radius: 8px;
+        display: block;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
 
-    nav a:hover, nav a.active {
-      background-color: #2d2d4b;
-      color: #fff;
-    }
+      nav a:hover,
+      nav a.active {
+        background-color: #2d2d4b;
+        color: #fff;
+      }
 
-    .chat-sessions {
-      margin-top: 1rem;
-      border-top: 1px solid #444;
-      padding-top: 0.5rem;
-      overflow-y: auto;
-      max-height: 320px;
-    }
+      .chat-sessions {
+        margin-top: 1rem;
+        border-top: 1px solid #444;
+        padding-top: 0.5rem;
+        overflow-y: auto;
+        max-height: 320px;
+      }
 
-    .chat-session-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.3rem 0.5rem;
-      border-radius: 5px;
-      font-size: 0.85rem;
-      color: #ccc;
-      transition: background 0.2s ease;
-    }
+      .chat-session-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.3rem 0.5rem;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        color: #ccc;
+        transition: background 0.2s ease;
+      }
 
-    .chat-session-item.active {
-      background-color: #0d6efd;
-      color: #fff;
-    }
+      .chat-session-item.active {
+        background-color: #0d6efd;
+        color: #fff;
+      }
 
-    .chat-session-item:hover {
-      background-color: #2d2d4b;
-    }
+      .chat-session-item:hover {
+        background-color: #2d2d4b;
+      }
 
-    .chat-session-item .delete-btn {
-      display: none;
-      background: transparent;
-      border: none;
-      color: #ff6b6b;
-      font-size: 1.1rem;
-      cursor: pointer;
-    }
+      .chat-session-item .delete-btn {
+        display: none;
+        background: transparent;
+        border: none;
+        color: #ff6b6b;
+        font-size: 1.1rem;
+        cursor: pointer;
+      }
 
-    .chat-session-item:hover .delete-btn {
-      display: inline;
-    }
+      .chat-session-item:hover .delete-btn {
+        display: inline;
+      }
 
-    .chat-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 1rem;
-      overflow: hidden;
-    }
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        overflow: hidden;
+      }
 
-    .chat-header {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 1rem;
-    }
+      .chat-header {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 1rem;
+      }
 
-    .chat-history {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 10px;
-    }
+      .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
 
-    .chat-message {
-      margin-bottom: 1rem;
-    }
+      .chat-message {
+        margin-bottom: 1rem;
+      }
 
-    .chat-message.user {
-      text-align: right;
-    }
+      .chat-message.user {
+        text-align: right;
+      }
 
-    .chat-message.assistant {
-      text-align: left;
-    }
+      .chat-message.assistant {
+        text-align: left;
+      }
 
-    .chat-bubble {
-      display: inline-block;
-      padding: 10px 15px;
-      border-radius: 15px;
-      max-width: 80%;
-    }
+      .chat-bubble {
+        display: inline-block;
+        padding: 10px 15px;
+        border-radius: 15px;
+        max-width: 80%;
+      }
 
-    .user .chat-bubble {
-      background-color: #0d6efd;
-      color: white;
-    }
+      .user .chat-bubble {
+        background-color: #0d6efd;
+        color: white;
+      }
 
-    .assistant .chat-bubble {
-      background-color: #f5f5f5;
-      color: #212529;
-      padding: 1rem;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      white-space: pre-line;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+      .assistant .chat-bubble {
+        background-color: #f5f5f5;
+        color: #212529;
+        padding: 1rem;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        white-space: pre-line;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
 
-    .chat-input {
-      border-top: 1px solid #ccc;
-      padding: 10px 0;
-    }
+      .chat-input {
+        border-top: 1px solid #ccc;
+        padding: 10px 0;
+      }
 
-    .chat-input form {
-      display: flex;
-      gap: 10px;
-    }
+      .chat-input form {
+        display: flex;
+        gap: 10px;
+      }
 
-    .chat-input input {
-      flex: 1;
-    }
+      .chat-input input {
+        flex: 1;
+      }
 
-    .sidebar-footer {
-      margin-top: auto;
-      font-size: 0.75rem;
-      color: #888;
-      text-align: center;
-    }
+      .sidebar-footer {
+        margin-top: auto;
+        font-size: 0.75rem;
+        color: #888;
+        text-align: center;
+      }
 
-    .scrollable::-webkit-scrollbar {
-      width: 6px;
-    }
+      .scrollable::-webkit-scrollbar {
+        width: 6px;
+      }
 
-    .scrollable::-webkit-scrollbar-thumb {
-      background-color: #555;
-      border-radius: 8px;
-    }
-  </style>
-</head>
-<body class="bg-body">
-  <div class="chat-wrapper">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="logo-wrapper">
-        <img src="{{ url_for('static', filename='refidoc-logo.png') }}" alt="RefiDoc Logo" class="logo-img" />
-      </div>
-      <nav>
-        {% if role == "admin" %}
+      .scrollable::-webkit-scrollbar-thumb {
+        background-color: #555;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body class="bg-body">
+    <div class="chat-wrapper">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="logo-wrapper">
+          <img
+            src="{{ url_for('static', filename='refidoc-logo.png') }}"
+            alt="RefiDoc Logo"
+            class="logo-img"
+          />
+        </div>
+        <nav>
+          {% if role == "admin" %}
           <a href="{{ url_for('upload') }}">📤 Upload Docs</a>
           <a href="{{ url_for('documents') }}">📁 Uploaded Docs</a>
           <a href="{{ url_for('manage_users') }}">👥 Manage Users</a>
-        {% endif %}
-        <a href="{{ url_for('chat') }}">➕ New Chat</a>
-      </nav>
-
-      <div class="chat-sessions">
-        {% set today = current_time.date() %}
-        {% set yesterday = (current_time - timedelta(days=1)).date() %}
-        {% set grouped = {'Today': [], 'Yesterday': [], 'Older': []} %}
-        {% for s in sessions %}
-          {% set date = s.created_at.date() %}
-          {% set raw = s.first_prompt or 'New Chat' %}
-          {% set text = raw.split('\n')[0][:35] + ('...' if raw|length > 35 else '') %}
-          {% if date == today %}
-            {% set _ = grouped['Today'].append((s.id, text)) %}
-          {% elif date == yesterday %}
-            {% set _ = grouped['Yesterday'].append((s.id, text)) %}
-          {% else %}
-            {% set _ = grouped['Older'].append((s.id, text)) %}
           {% endif %}
-        {% endfor %}
+          <a href="{{ url_for('chat') }}">➕ New Chat</a>
+        </nav>
 
-        {% for group, chats in grouped.items() %}
-          {% if chats %}
-            <div class="fw-bold text-muted small mt-2 mb-1">{{ group }}</div>
-            {% for chat_id, chat_text in chats %}
-              <div class="chat-session-item {% if chat_id == current_session.id %}active{% endif %}">
-                <a href="{{ url_for('chat', session_id=chat_id) }}" class="flex-grow-1 text-decoration-none text-white">
-                  {{ chat_text }}
-                </a>
-                <button class="delete-btn" data-id="{{ chat_id }}" title="Delete Chat">×</button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endfor %}
-      </div>
+        <div class="chat-sessions">
+          {% set today = current_time.date() %} {% set yesterday = (current_time
+          - timedelta(days=1)).date() %} {% set grouped = {'Today': [],
+          'Yesterday': [], 'Older': []} %} {% for s in sessions %} {% set date =
+          s.created_at.date() %} {% set raw = s.first_prompt or 'New Chat' %} {%
+          set text = raw.split('\n')[0][:35] + ('...' if raw|length > 35 else
+          '') %} {% if date == today %} {% set _ =
+          grouped['Today'].append((s.id, text)) %} {% elif date == yesterday %}
+          {% set _ = grouped['Yesterday'].append((s.id, text)) %} {% else %} {%
+          set _ = grouped['Older'].append((s.id, text)) %} {% endif %} {% endfor
+          %} {% for group, chats in grouped.items() %} {% if chats %}
+          <div class="fw-bold text-muted small mt-2 mb-1">{{ group }}</div>
+          {% for chat_id, chat_text in chats %}
+          <div
+            class="chat-session-item {% if chat_id == current_session.id %}active{% endif %}"
+          >
+            <a
+              href="{{ url_for('chat', session_id=chat_id) }}"
+              class="flex-grow-1 text-decoration-none text-white"
+            >
+              {{ chat_text }}
+            </a>
+            <button
+              class="delete-btn"
+              data-id="{{ chat_id }}"
+              title="Delete Chat"
+            >
+              ×
+            </button>
+          </div>
+          {% endfor %} {% endif %} {% endfor %}
+        </div>
 
-      <div class="sidebar-footer mt-3">
-        <small>RefiDoc © 2025</small>
-      </div>
-    </div>
-
-    <!-- Main Chat -->
-    <div class="chat-container">
-      <div class="chat-header">
-        <div class="dropdown">
-          <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-            👤 {{ username }}
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-            <li><a class="dropdown-item disabled">Profile</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('toggle_theme') }}">🌓 Theme</a></li>
-            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a></li>
-          </ul>
+        <div class="sidebar-footer mt-3">
+          <small>RefiDoc © 2025</small>
         </div>
       </div>
 
-      <div class="chat-history scrollable" id="chat-history">
-        {% for msg in messages %}
+      <!-- Main Chat -->
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="dropdown">
+            <button
+              class="btn btn-outline-secondary dropdown-toggle"
+              type="button"
+              id="userDropdown"
+              data-bs-toggle="dropdown"
+            >
+              👤 {{ username }}
+            </button>
+            <ul
+              class="dropdown-menu dropdown-menu-end"
+              aria-labelledby="userDropdown"
+            >
+              <li><a class="dropdown-item disabled">Profile</a></li>
+             <!--
+<li>
+  <a class="dropdown-item" href="{{ url_for('toggle_theme') }}">🌓 Theme</a>
+</li>
+-->
+              <li>
+                <a class="dropdown-item" href="{{ url_for('about') }}"
+                  >ℹ️ About</a
+                >
+              </li>
+
+              <li>
+                <a
+                  class="dropdown-item text-danger"
+                  href="{{ url_for('logout') }}"
+                  >Logout</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="chat-history scrollable" id="chat-history">
+          {% for msg in messages %}
           <div class="chat-message {{ msg.role }}">
             <div class="chat-bubble">{{ msg.content | safe }}</div>
             <div class="small text-muted">
-              {{ msg.role.capitalize() }} • {{ msg.timestamp.strftime("%Y-%m-%d %H:%M") }}
+              {{ msg.role.capitalize() }} • {{ msg.timestamp.strftime("%Y-%m-%d
+              %H:%M") }}
             </div>
           </div>
-        {% endfor %}
-      </div>
+          {% endfor %}
+        </div>
 
-      <!-- Input -->
-      <div class="chat-input">
-        <form id="chat-form">
-          <input type="text" id="prompt" class="form-control" placeholder="Ask something..." required />
-          <button type="submit" class="btn btn-success">Send</button>
-        </form>
-        <div id="loading" class="mt-2 text-muted" style="display: none">💬 Thinking...</div>
+        <!-- Input -->
+        <div class="chat-input">
+          <form id="chat-form">
+            <input
+              type="text"
+              id="prompt"
+              class="form-control"
+              placeholder="Ask something..."
+              required
+            />
+            <button type="submit" class="btn btn-success">Send</button>
+          </form>
+          <div id="loading" class="mt-3" style="display: none">
+            <div class="d-flex align-items-center gap-2 text-secondary">
+              <div class="spinner-border spinner-border-sm" role="status"></div>
+              <span>Generating response...</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    const chat = document.getElementById("chat-history");
-    window.onload = () => chat.scrollTop = chat.scrollHeight;
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const chat = document.getElementById("chat-history");
+      window.onload = () => (chat.scrollTop = chat.scrollHeight);
 
-    const form = document.getElementById("chat-form");
-    const input = document.getElementById("prompt");
-    const loading = document.getElementById("loading");
-    const sessionId = "{{ current_session.id }}";
+      const form = document.getElementById("chat-form");
+      const input = document.getElementById("prompt");
+      const loading = document.getElementById("loading");
+      const sessionId = "{{ current_session.id }}";
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const userText = input.value.trim();
-      if (!userText) return;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userText = input.value.trim();
+        if (!userText) return;
 
-      chat.innerHTML += `
+        chat.innerHTML += `
         <div class="chat-message user">
           <div class="chat-bubble">${userText}</div>
           <div class="small text-muted">You • now</div>
         </div>`;
-      chat.scrollTop = chat.scrollHeight;
+        chat.scrollTop = chat.scrollHeight;
 
-      input.value = "";
-      loading.style.display = "block";
+        input.value = "";
+        loading.style.display = "block";
 
-      const res = await fetch("/send_message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: userText, session_id: sessionId }),
-      });
+        const res = await fetch("/send_message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: userText, session_id: sessionId }),
+        });
 
-      const data = await res.json();
-      loading.style.display = "none";
+        const data = await res.json();
+        loading.style.display = "none";
 
-      chat.innerHTML += `
+        chat.innerHTML += `
         <div class="chat-message assistant">
           <div class="chat-bubble">${data.response}</div>
           <div class="small text-muted">Assistant • now</div>
         </div>`;
-      chat.scrollTop = chat.scrollHeight;
-    });
-
-    document.querySelectorAll(".delete-btn").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const id = btn.dataset.id;
-        if (confirm("Delete this chat?")) {
-          const res = await fetch(`/delete_chat/${id}`, { method: "POST" });
-          if (res.redirected) window.location.href = res.url;
-          else location.reload();
-        }
+        chat.scrollTop = chat.scrollHeight;
       });
-    });
-  </script>
-</body>
+
+      document.querySelectorAll(".delete-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const id = btn.dataset.id;
+          if (confirm("Delete this chat?")) {
+            const res = await fetch(`/delete_chat/${id}`, { method: "POST" });
+            if (res.redirected) window.location.href = res.url;
+            else location.reload();
+          }
+        });
+      });
+    </script>
+  </body>
 </html>
