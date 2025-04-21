@@ -16,9 +16,9 @@
           >📁 Admin Panel - {{ username }}</span
         >
         <div>
-          <a href="{{ url_for('chat') }}" class="btn btn-outline-secondary me-2"
-            >Back to Chat</a
-          >
+          <a href="{{ url_for('chat') }}" class="btn btn-primary"
+              >⬅ Back to Chat</a
+            >
           <!-- <a href="{{ url_for('toggle_theme') }}" class="btn btn-outline-info me-2">Toggle Theme</a> -->
           <a href="{{ url_for('logout') }}" class="btn btn-outline-danger"
             >Logout</a
@@ -28,9 +28,6 @@
     </nav>
     <div class="container mt-5">
       <h4>📂 Uploaded Documents</h4>
-      <a href="/chat" class="btn btn-outline-secondary btn-sm mb-3"
-        >Back to Chat</a
-      >
 
       {% if files %}
       <ul class="list-group">
