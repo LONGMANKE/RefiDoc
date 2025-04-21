@@ -6,6 +6,8 @@ import os
 import requests
 from datetime import datetime, timedelta
 from openai import AzureOpenAI
+from werkzeug.utils import secure_filename
+
 
 # --- App Setup ---
 load_dotenv()
@@ -15,6 +17,11 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///chat_app.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 db.metadata.clear()
+
+# ✅ Upload folder
+UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend/uploads'))
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- Environment ---
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
@@ -50,6 +57,14 @@ class ChatMessage(db.Model):
     role = db.Column(db.String(10))
     content = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+class Document(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    version = db.Column(db.Integer, default=1)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploader_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    uploader = db.relationship("User", backref="uploaded_documents")
 
 # --- Helpers ---
 def get_current_user():
@@ -179,6 +194,7 @@ def chat():
         timedelta=timedelta  # 👈 This line fixes your error!
     )
 
+# --- Upload with Versioning ---
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     user = get_current_user()
@@ -202,21 +218,40 @@ def upload():
 
         if file:
             try:
+                original_name = secure_filename(file.filename)
+                base_name, ext = os.path.splitext(original_name)
+
+                # Get current highest version
+                existing_versions = Document.query.filter(Document.filename.like(f"{base_name}_v%{ext}")).all()
+                version = 1 + max([doc.version for doc in existing_versions], default=0)
+                versioned_name = f"{base_name}_v{version}{ext}"
+                file.filename = versioned_name
+
+                # Send to FastAPI backend for chunking/indexing
                 files = {"file": (file.filename, file.stream, file.content_type)}
                 data = {"chunk_size": chunk_size, "chunk_overlap": chunk_overlap}
                 res = requests.post(f"{API_BASE_URL}/upload", files=files, data=data)
 
                 if res.status_code == 201:
-                    message = res.json().get("message", "Upload successful.")
-                    # Only return JSON if it's an XMLHttpRequest (AJAX)
+                    # Save file locally (optional)
+                    file.stream.seek(0)
+                    local_path = os.path.join(app.config["UPLOAD_FOLDER"], versioned_name)
+                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                    file.save(local_path)
+
+                    # Save to database
+                    doc = Document(filename=versioned_name, version=version, uploader_id=user.id)
+                    db.session.add(doc)
+                    db.session.commit()
+
+                    message = f"Uploaded and indexed as {versioned_name}"
                     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                         return jsonify({"message": message})
                     stats = requests.get(f"{API_BASE_URL}/stats").json()
                 else:
-                    message = res.json().get("detail", "Something went wrong.")
+                    message = res.json().get("detail", "Upload to backend failed.")
             except Exception as e:
                 message = f"Upload failed: {str(e)}"
-
         else:
             message = "Please select a file."
 
@@ -231,34 +266,42 @@ def upload():
         theme=session.get("theme", "light")
     )
     
+# --- View Documents with Versions ---
 @app.route("/documents")
 def documents():
     user = get_current_user()
     if not user or not user.is_admin:
         return redirect(url_for("chat"))
 
-    files = []
-    try:
-        res = requests.get(f"{API_BASE_URL}/files")
-        if res.ok:
-            files = res.json()
-    except Exception as e:
-        files = []
+    all_docs = Document.query.order_by(Document.filename, Document.version.desc()).all()
+    grouped = {}
+    for doc in all_docs:
+        base = doc.filename.rsplit("_v", 1)[0]
+        grouped.setdefault(base, []).append(doc)
 
-    return render_template("documents.html", files=files, username=user.username, theme=session.get("theme", "light"))
+    return render_template("documents.html", grouped=grouped, username=user.username, theme=session.get("theme", "light"))
 
-@app.route("/delete_file/<filename>", methods=["POST"])
-def delete_file(filename):
+# --- Delete Version ---
+@app.route("/delete_file/<int:doc_id>", methods=["POST"])
+def delete_file(doc_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return redirect(url_for("chat"))
 
-    try:
-        requests.delete(f"{API_BASE_URL}/files/{filename}")
-    except:
-        pass
+    doc = Document.query.get(doc_id)
+    if doc:
+        # delete physical file
+        try:
+            os.remove(os.path.join(app.config["UPLOAD_FOLDER"], doc.filename))
+        except FileNotFoundError:
+            pass
+
+        # delete from DB
+        db.session.delete(doc)
+        db.session.commit()
 
     return redirect(url_for("documents"))
+
 @app.route("/users", methods=["GET"])
 def manage_users():
     user = get_current_user()
