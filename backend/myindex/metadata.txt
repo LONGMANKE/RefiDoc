@@ -1,3 +1,3 @@
-total_documents=3
-total_chunks=3
-last_updated=2025-04-21T21:17:15.618268
+total_documents=8
+total_chunks=24
+last_updated=2025-04-21T23:47:22.544463

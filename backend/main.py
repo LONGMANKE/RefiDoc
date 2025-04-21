@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 # Import LangChain and FAISS components
 from langchain_openai import AzureOpenAIEmbeddings
 from langchain_core.documents import Document
-from langchain.vectorstores.faiss import FAISS
+# from langchain.vectorstores.faiss import FAISS
+from langchain_community.vectorstores import FAISS
 
 # Import custom document processing utilities
 from utils.document_loader import process_document

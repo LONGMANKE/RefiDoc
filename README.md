@@ -27,6 +27,9 @@ AIAGENTTEST/
 ├── .gitignore
 ├── README.md             # You're here!
 ├── requirements.txt
+├── docker-compose.yml
+├── backend/Dockerfile.backend
+├── frontend/Dockerfile.frontend
 ```
 
 ---
@@ -65,7 +68,7 @@ AZURE_OPENAI_API_VERSION=2024-12-01-preview
 AZURE_EMBEDDING_DEPLOYMENT=your_embedding_deployment  # e.g. text-embedding-3-large
 
 # FastAPI backend
-FASTAPI_BACKEND=http://localhost:8000
+FASTAPI_BACKEND=http://backend:8000
 ```
 
 ✅ **Important:** Add `.env` to `.gitignore` so secrets are not pushed.
@@ -74,18 +77,44 @@ FASTAPI_BACKEND=http://localhost:8000
 
 ## 🚀 Running the Application
 
-### Start Backend (FastAPI for Document Indexing)
+### Option 1: Manually
+
+#### Start Backend (FastAPI for Document Indexing)
 
 ```bash
 cd backend
 uvicorn main:app --reload --port 8000
 ```
 
-### Start Frontend (Flask Chat App)
+#### Start Frontend (Flask Chat App)
 
 ```bash
 cd frontend
 python app.py
+```
+
+---
+
+### Option 2: 🐳 Run with Docker
+
+```bash
+docker compose up --build -d
+```
+
+This will build and run both the frontend (Flask) and backend (FastAPI) services.
+
+Ensure you have the following:
+
+- `.env` file at the root
+- `requirements.txt` at the root
+- `docker-compose.yml` at the root - NB of the FASTAPI_BACKEND in the env should be FASTAPI_BACKEND=http://backend:8000 not loclhost
+- `Dockerfile.backend` in `backend/`
+- `Dockerfile.frontend` in `frontend/`
+
+To stop the containers:
+
+```bash
+docker compose down
 ```
 
 ---
@@ -105,8 +134,7 @@ Default login credentials:
 - Index documents using **LangChain + FAISS**
 - Query document content using **Azure OpenAI chat completions**
 - Chat history saved per user/session
-- Toggle between light/dark mode
-- Admin dashboard for managing documents & users
+- Admin dashboard for managing documents versioning & users
 
 ---
 
@@ -114,7 +142,7 @@ Default login credentials:
 
 Admins can:
 
-- ✅ Upload and manage documents
+- ✅ Upload and manage documents versions
 - 👥 View/delete users
 - 📈 View document stats (chunks, last updated)
 
@@ -173,5 +201,3 @@ Go to "Deployments" > + Create
 ### 6. Update `.env`
 
 See earlier section for template. Use actual values from portal.
-
----

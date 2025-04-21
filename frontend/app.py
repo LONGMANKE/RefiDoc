@@ -358,4 +358,4 @@ if __name__ == "__main__":
             admin = User(username="admin", password_hash=generate_password_hash("admin123"), is_admin=True)
             db.session.add(admin)
             db.session.commit()
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
