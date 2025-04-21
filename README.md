@@ -1,10 +1,11 @@
-# 🧠 Refidoc AI Assistant
+
+# 🧠 RefiDoc AI Assistant (Powered by Azure OpenAI)
 
 <p align="center">
   <img src="frontend/static/refidoc-logo.png" alt="RefiDoc Logo" width="250">
 </p>
 
-Refidoc is an intelligent document assistant that allows users to upload PDF/TXT files, index them using vector embeddings (FAISS + LangChain), and chat with an AI agent that answers based on document content.
+RefiDoc is a secure, intelligent document assistant powered by **Azure OpenAI**, enabling users to upload PDF/TXT files, index them using **FAISS + LangChain**, and chat with an AI agent that answers based on internal document context.
 
 ---
 
@@ -13,16 +14,16 @@ Refidoc is an intelligent document assistant that allows users to upload PDF/TXT
 ```
 AIAGENTTEST/
 ├── backend/
-│   ├── main.py           # FastAPI backend
+│   ├── main.py           # FastAPI backend (embedding + vector search)
 │   ├── myindex/          # FAISS index
 │   ├── uploads/          # Uploaded documents
 │   └── utils/            # Document loader utilities
 ├── frontend/
-│   ├── app.py            # Flask frontend
+│   ├── app.py            # Flask frontend (chat UI)
 │   ├── static/           # Logo, styles
 │   ├── templates/        # HTML templates
 │   └── instance/chat_app.db # SQLite DB
-├── .env                  # Secrets (OpenAI key, etc.)
+├── .env                  # Environment variables (Azure secrets)
 ├── .gitignore
 ├── README.md             # You're here!
 ├── requirements.txt
@@ -30,42 +31,57 @@ AIAGENTTEST/
 
 ---
 
-## ⚙️ Setup
+## ⚙️ Setup Instructions
 
-1. **Clone repository**
+### 1. Clone the Repository
 
-   ```bash
-   git clone https://github.com/yourname/refidoc.git
-   cd refidoc
-   ```
+```bash
+git clone https://github.com/longmanke/refidoc.git
+cd refidoc
+```
 
-2. **Create virtualenv and install dependencies**
+### 2. Create a Virtual Environment & Install Dependencies
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # or venv\Scripts\activate on Windows
-   pip install -r requirements.txt
-   ```
+```bash
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
 
-3. **Set up environment variables**
-   Create a `.env` file:
-   ```
-   OPENAI_API_KEY=your_openai_key
-   SECRET_KEY=your_flask_secret
-   ```
+### 3. Configure Azure Environment Variables
+
+Create a `.env` file at the project root:
+
+```
+SECRET_KEY=your_flask_secret
+
+# Azure OpenAI Chat (used by Flask frontend)
+AZURE_OPENAI_KEY=your_azure_openai_key
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_DEPLOYMENT_NAME=your_chat_model_deployment  # e.g. gpt-4
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# Azure OpenAI Embeddings (used by FastAPI backend)
+AZURE_EMBEDDING_DEPLOYMENT=your_embedding_deployment  # e.g. text-embedding-3-large
+
+# FastAPI backend
+FASTAPI_BACKEND=http://localhost:8000
+```
+
+✅ **Important:** Add `.env` to `.gitignore` so secrets are not pushed.
 
 ---
 
 ## 🚀 Running the Application
 
-### Backend (FastAPI)
+### Start Backend (FastAPI for Document Indexing)
 
 ```bash
 cd backend
 uvicorn main:app --reload --port 8000
 ```
 
-### Frontend (Flask)
+### Start Frontend (Flask Chat App)
 
 ```bash
 cd frontend
@@ -74,57 +90,88 @@ python app.py
 
 ---
 
-## 🔐 Admin Credentials
+## 🔐 Admin Access
 
-Default login:
+Default login credentials:
 
-- Username: `admin`
-- Password: `admin123`
+- **Username**: `admin`
+- **Password**: `admin123`
 
 ---
 
-## 📁 Document Upload & Chat
+## 💬 Features
 
-- Admin can upload `.pdf` or `.txt` files.
-- Files are chunked and indexed using LangChain + FAISS.
-- Users can ask questions, and the app responds contextually.
+- Upload `.pdf` or `.txt` files
+- Index documents using **LangChain + FAISS**
+- Query document content using **Azure OpenAI chat completions**
+- Chat history saved per user/session
+- Toggle between light/dark mode
+- Admin dashboard for managing documents & users
 
 ---
 
 ## 📊 Admin Panel
 
-Admin can:
+Admins can:
 
-- Upload & manage documents
-- View and delete users
-- See stats: total docs, chunks, last updated
+- ✅ Upload and manage documents
+- 👥 View/delete users
+- 📈 View document stats (chunks, last updated)
 
 ---
 
-## 🧩 Use Case: Tailored for Organizations with Agents & Call Centers
+## 🎯 Use Case: Ideal for Call Centers & Internal Knowledge Bases
 
-RefiDoc is especially useful for:
+### ☎️ For Call Centers
 
-### 🎧 Call Centers & Support Teams
+Empower agents with instant access to policy documents, manuals, FAQs—without leaving the screen.
 
-> Empower your customer service agents with instant answers from internal documents.
+- Answer client queries quickly
+- Improve customer satisfaction
+- Enable multilingual support
 
-✅ **Use RefiDoc to:**
+### 🏢 For Internal Teams
 
-- Upload policy documents, product manuals, or FAQs
-- Enable agents to **chat with documents** in real-time while assisting clients
-- Reduce response time and improve first-call resolution
-- Support **multilingual teams** with centralized knowledge
+Let your staff chat with documentation:
 
-### 🏢 Internal Teams & Enterprises
+- HR: policy documents  
+- Legal: contracts  
+- Finance: tax and compliance files  
+- IT: technical documentation
 
-> RefiDoc becomes your **smart internal documentation assistant**.
+---
 
-✅ Ideal for:
+## ☁️ Setting Up Azure OpenAI
 
-- HR teams referencing policies
-- Legal teams querying contracts
-- IT teams managing technical documentation
-- Finance departments retrieving invoice or tax information
+### 1. Prerequisites
 
-💡 Whether you’re running a small support desk or managing enterprise knowledge, **RefiDoc offers fast, AI-driven document querying** to improve productivity and accuracy.
+- Azure account: https://azure.com
+- Azure OpenAI access (apply at [https://aka.ms/oai/access](https://aka.ms/oai/access))
+
+### 2. Create Azure OpenAI Resource
+
+1. Go to Azure Portal > Create Resource > "Azure OpenAI"
+2. Choose location (e.g., East US), create resource
+
+### 3. Deploy Chat Model
+
+Go to "Deployments" > + Create
+
+- Model: `gpt-35-turbo` or `gpt-4`
+- Deployment name: `gpt-35-refidoc` or similar
+
+### 4. Deploy Embedding Model
+
+- Model: `text-embedding-3-large`
+- Deployment name: `text-embedding-3-large`
+
+### 5. Get Keys and Endpoint
+
+- Navigate to Keys & Endpoint section of your Azure OpenAI resource
+- Copy: `Key`, `Endpoint`
+
+### 6. Update `.env`
+
+See earlier section for template. Use actual values from portal.
+
+---

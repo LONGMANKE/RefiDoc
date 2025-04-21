@@ -12,7 +12,7 @@ import uvicorn
 from dotenv import load_dotenv
 
 # Import LangChain and FAISS components
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain.vectorstores.faiss import FAISS
 
@@ -22,9 +22,9 @@ from utils.document_loader import process_document
 # Load environment variables
 load_dotenv()
 
-# Check for OpenAI API key
-if not os.getenv("OPENAI_API_KEY"):
-    raise ValueError("OPENAI_API_KEY environment variable not set. Please add it to .env file.")
+# Check for Azure OpenAI env vars
+if not os.getenv("AZURE_OPENAI_KEY") or not os.getenv("AZURE_OPENAI_ENDPOINT") or not os.getenv("AZURE_EMBEDDING_DEPLOYMENT"):
+    raise ValueError("Missing Azure OpenAI configuration in .env file.")
 
 # Create directory structure if not exists
 os.makedirs("uploads", exist_ok=True)
@@ -46,8 +46,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OpenAI embeddings
-embeddings = OpenAIEmbeddings()
+# Initialize Azure OpenAI embeddings
+embeddings = AzureOpenAIEmbeddings(
+    azure_deployment=os.getenv("AZURE_EMBEDDING_DEPLOYMENT"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_key=os.getenv("AZURE_OPENAI_KEY"),
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION")
+)
 
 # Define request and response models
 class QueryRequest(BaseModel):
@@ -73,7 +78,7 @@ class StatsResponse(BaseModel):
 def get_faiss_index():
     """Load the FAISS index if it exists, otherwise create a new one."""
     index_path = "myindex"
-    
+
     try:
         if os.path.exists(os.path.join(index_path, "index.faiss")):
             return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
@@ -90,6 +95,8 @@ def get_faiss_index():
         db = FAISS.from_documents(empty_docs, embeddings)
         db.save_local(index_path)
         return db
+
+
 
 def save_upload_file(upload_file: UploadFile) -> str:
     """Save an uploaded file to the uploads directory."""
@@ -239,6 +246,9 @@ async def upload_document(
         }
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[ERROR] Upload failed: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
 
 @app.post("/query", response_model=QueryResponse)
@@ -282,6 +292,8 @@ async def query_documents(query_request: QueryRequest):
         )
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error querying documents: {str(e)}")
 
 @app.get("/stats", response_model=StatsResponse)

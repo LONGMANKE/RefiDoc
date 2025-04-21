@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import requests
 from datetime import datetime, timedelta
+from openai import AzureOpenAI
 
 # --- App Setup ---
 load_dotenv()
@@ -16,8 +17,17 @@ db = SQLAlchemy(app)
 db.metadata.clear()
 
 # --- Environment ---
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-API_BASE_URL = "http://localhost:8000"  # FastAPI backend
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
+AZURE_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
+API_BASE_URL = os.getenv("FASTAPI_BACKEND", "http://localhost:8000")
+
+client = AzureOpenAI(
+    api_key=AZURE_OPENAI_KEY,
+    api_version=AZURE_API_VERSION,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT
+)
 
 # --- Models ---
 class User(db.Model):
@@ -30,7 +40,7 @@ class ChatSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    first_prompt = db.Column(db.String(255))  # NEW: to display summary
+    first_prompt = db.Column(db.String(255))
     messages = db.relationship("ChatMessage", backref="session", lazy=True)
 
 class ChatMessage(db.Model):
@@ -51,6 +61,49 @@ def save_message(user, role, content, session_id):
     message = ChatMessage(user_id=user.id, role=role, content=content, session_id=session_id)
     db.session.add(message)
     db.session.commit()
+
+# --- Routes ---
+@app.route("/send_message", methods=["POST"])
+def send_message():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    prompt = data.get("prompt")
+    session_id = data.get("session_id")
+
+    if not prompt or not session_id:
+        return jsonify({"error": "Missing prompt or session ID"}), 400
+
+    chat_session = ChatSession.query.filter_by(id=session_id, user_id=user.id).first()
+    if not chat_session:
+        return jsonify({"error": "Invalid session"}), 404
+
+    if not chat_session.first_prompt:
+        chat_session.first_prompt = prompt[:255]
+        db.session.commit()
+
+    save_message(user, "user", prompt, session_id)
+
+    response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
+    results = response.json()["results"]
+    context = "\n\n".join([r["content"] for r in results])
+
+    refined_prompt = f"Answer the user's question clearly based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
+
+    gpt_response = client.chat.completions.create(
+        model=AZURE_DEPLOYMENT_NAME,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": refined_prompt},
+        ]
+    )
+
+    answer = gpt_response.choices[0].message.content
+    save_message(user, "assistant", answer, session_id)
+
+    return jsonify({"response": answer})
 
 # --- Routes ---
 @app.route("/", methods=["GET", "POST"])
@@ -122,61 +175,6 @@ def chat():
         current_time=datetime.now(),
         timedelta=timedelta  # 👈 This line fixes your error!
     )
-@app.route("/send_message", methods=["POST"])
-def send_message():
-    user = get_current_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    data = request.get_json()
-    prompt = data.get("prompt")
-    session_id = data.get("session_id")
-
-    if not prompt or not session_id:
-        return jsonify({"error": "Missing prompt or session ID"}), 400
-
-    chat_session = ChatSession.query.filter_by(id=session_id, user_id=user.id).first()
-    if not chat_session:
-        return jsonify({"error": "Invalid session"}), 404
-
-    # 🔥 Save the first user message as the preview if it's the first one
-    if not chat_session.first_prompt:
-        chat_session.first_prompt = prompt[:255]  # limit to 255 chars
-        db.session.commit()
-
-    # Save the user's message
-    save_message(user, "user", prompt, session_id)
-
-    # Query the FastAPI backend for relevant context
-    response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
-    results = response.json()["results"]
-    context = "\n\n".join([r["content"] for r in results])
-    
-    # Refine the prompt for OpenAI
-    refined_prompt = f"Answer the user's question clearly based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
-
-    # Send to OpenAI
-    gpt_response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-3.5-turbo",
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": refined_prompt},
-            ],
-        },
-    )
-
-    answer = gpt_response.json()["choices"][0]["message"]["content"]
-    
-    # Save assistant response
-    save_message(user, "assistant", answer, session_id)
-
-    return jsonify({"response": answer})
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
