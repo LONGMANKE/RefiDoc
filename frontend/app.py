@@ -4,10 +4,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
 import requests
+import markdown
 from datetime import datetime, timedelta
 from openai import AzureOpenAI
 from werkzeug.utils import secure_filename
-
+from markdown import markdown as md_to_html
 
 # --- App Setup ---
 load_dotenv()
@@ -115,7 +116,8 @@ def send_message():
         ]
     )
 
-    answer = gpt_response.choices[0].message.content
+    raw_answer = gpt_response.choices[0].message.content
+    answer = md_to_html(raw_answer) 
     save_message(user, "assistant", answer, session_id)
 
     return jsonify({"response": answer})
