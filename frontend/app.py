@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -349,6 +349,117 @@ def delete_chat(chat_id):
         db.session.add(new_session)
         db.session.commit()
         return redirect(url_for("chat", session_id=new_session.id))
+
+@app.route("/download_file/<int:doc_id>")
+def download_file(doc_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    
+    document = Document.query.get_or_404(doc_id)
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], document.filename)
+    
+    if not os.path.exists(file_path):
+        return "File not found", 404
+        
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=document.filename
+    )
+
+@app.route("/raw_pdf/<int:doc_id>")
+def raw_pdf(doc_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    
+    document = Document.query.get_or_404(doc_id)
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], document.filename)
+    
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    try:
+        return send_file(
+            file_path,
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=document.filename
+        )
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}", 500
+
+@app.route("/preview_file/<int:doc_id>")
+def preview_file(doc_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    
+    document = Document.query.get_or_404(doc_id)
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], document.filename)
+    
+    if not os.path.exists(file_path):
+        return "File not found", 404
+    
+    # Get file extension
+    _, ext = os.path.splitext(document.filename)
+    ext = ext.lower()
+    
+    # Handle PDF files
+    if ext == '.pdf':
+        return render_template(
+            "preview.html",
+            filename=document.filename,
+            file_type="pdf",
+            doc_id=doc_id
+        )
+
+    # List of supported text file extensions
+    text_extensions = {
+        '.txt', '.md', '.py', '.js', '.html', '.css', '.json', '.xml', '.csv', 
+        '.yml', '.yaml', '.ini', '.conf', '.log', '.sh', '.bat', '.ps1', 
+        '.java', '.cpp', '.c', '.h', '.hpp', '.cs', '.php', '.rb', '.pl',
+        '.sql', '.r', '.scala', '.swift', '.go', '.rs', '.ts'
+    }
+    
+    # Try different encodings
+    encodings = ['utf-8', 'latin-1', 'cp1252', 'ascii']
+    
+    if ext in text_extensions:
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as f:
+                    content = f.read()
+                    
+                # Detect if the content is actually readable text
+                if all(ord(char) < 128 or ord(char) > 31 for char in content[:1000]):
+                    # For markdown files, convert to HTML
+                    if ext == '.md':
+                        content = markdown.markdown(content)
+                        return render_template(
+                            "preview.html",
+                            filename=document.filename,
+                            content=content,
+                            file_type="markdown"
+                        )
+                    
+                    return render_template(
+                        "preview.html",
+                        filename=document.filename,
+                        content=content,
+                        file_type="text",
+                        language=ext[1:]  # Remove the dot from extension
+                    )
+            except UnicodeDecodeError:
+                continue
+    
+    return render_template(
+        "preview.html",
+        filename=document.filename,
+        content=f"This file type ({ext}) cannot be previewed directly. Please download the file to view its contents.",
+        file_type="binary"
+    )
 
 # --- Entry Point ---
 if __name__ == "__main__":

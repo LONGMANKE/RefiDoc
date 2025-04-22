@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <title>📂 Uploaded Documents</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+      .preview-modal {
+        padding: 0 !important;
+      }
+      .preview-modal .modal-dialog {
+        max-width: 90%;
+        height: 90vh;
+        margin: 1.75rem auto;
+      }
+      .preview-modal .modal-content {
+        height: 100%;
+      }
+      .preview-modal .modal-body {
+        padding: 0;
+        height: calc(100% - 60px); /* Subtract header height */
+      }
+      .preview-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+    </style>
   </head>
   <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary px-3">
@@ -19,24 +42,65 @@
     <div class="container mt-5">
       <h4>📂 Uploaded Documents</h4>
       {% if grouped %}
-  {% for base, versions in grouped.items() %}
-    <div class="mb-3">
-      <h6 class="fw-bold text-primary">📄 {{ base }}</h6>
-      <ul class="list-group">
-        {% for version in versions|sort(attribute='version', reverse=True) %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          Version {{ version.version }} (uploaded at {{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }})
-          <form method="POST" action="{{ url_for('delete_file', doc_id=version.id) }}">
-            <button class="btn btn-sm btn-danger">Delete</button>
-          </form>
-        </li>
+        {% for base, versions in grouped.items() %}
+          <div class="mb-3">
+            <h6 class="fw-bold text-primary">📄 {{ base }}</h6>
+            <ul class="list-group">
+              {% for version in versions|sort(attribute='version', reverse=True) %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>Version {{ version.version }} (uploaded at {{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }})</span>
+                <div class="btn-group">
+                  <button onclick="openPreview('{{ version.id }}')" class="btn btn-sm btn-info">
+                    <i class="bi bi-eye"></i> Preview
+                  </button>
+                  <a href="{{ url_for('download_file', doc_id=version.id) }}" class="btn btn-sm btn-success">
+                    <i class="bi bi-download"></i> Download
+                  </a>
+                  <form method="POST" action="{{ url_for('delete_file', doc_id=version.id) }}" class="d-inline">
+                    <button class="btn btn-sm btn-danger">Delete</button>
+                  </form>
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
         {% endfor %}
-      </ul>
+      {% else %}
+        <p>No uploaded documents found.</p>
+      {% endif %}
     </div>
-  {% endfor %}
-{% else %}
-  <p>No uploaded documents found.</p>
-{% endif %}
+
+    <!-- Preview Modal -->
+    <div class="modal preview-modal" id="previewModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Document Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <iframe id="previewFrame" class="preview-frame"></iframe>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Initialize modal
+      const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+      
+      function openPreview(docId) {
+        const previewFrame = document.getElementById('previewFrame');
+        previewFrame.src = "{{ url_for('preview_file', doc_id=0) }}".replace('0', docId);
+        previewModal.show();
+      }
+
+      // Clear iframe when modal is closed
+      document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('previewFrame').src = 'about:blank';
+      });
+    </script>
   </body>
 </html>
