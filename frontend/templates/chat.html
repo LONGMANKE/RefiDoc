@@ -206,6 +206,28 @@
         background-color: #555;
         border-radius: 8px;
       }
+
+      /* Modal styles */
+      .modal-dialog-preview {
+          max-width: 90vw; /* Adjust as needed */
+      }
+      .modal-body-preview {
+          height: 80vh; /* Adjust as needed */
+      }
+      .modal-body-preview iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+      }
+      /* Style for the preview link */
+      .doc-preview-link {
+        cursor: pointer;
+        text-decoration: underline;
+        color: #0d6efd; /* Bootstrap primary color */
+      }
+      .doc-preview-link:hover {
+        color: #0a58ca; /* Darker shade for hover */
+      }
     </style>
   </head>
   <body class="bg-body">
@@ -320,20 +342,38 @@
         <!-- Input -->
         <div class="chat-input">
           <form id="chat-form">
+            <input type="hidden" name="session_id" value="{{ current_session.id }}" />
             <input
               type="text"
               id="prompt"
+              name="prompt"
               class="form-control"
-              placeholder="Ask something..."
+              placeholder="Ask about the documents..."
+              autocomplete="off"
               required
             />
-            <button type="submit" class="btn btn-success">Send</button>
+            <button type="submit" class="btn btn-primary">Send</button>
           </form>
           <div id="loading" class="mt-3" style="display: none">
             <div class="d-flex align-items-center gap-2 text-secondary">
               <div class="spinner-border spinner-border-sm" role="status"></div>
               <span>Generating response...</span>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-preview modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="previewModalLabel">Document Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body modal-body-preview p-0">
+            <iframe id="previewFrame" src="about:blank" title="Document Preview"></iframe>
           </div>
         </div>
       </div>
@@ -349,6 +389,9 @@
       const input = document.getElementById("prompt");
       const loading = document.getElementById("loading");
       const sessionId = "{{ current_session.id }}";
+      const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+      const previewFrame = document.getElementById('previewFrame');
+      const previewModalLabel = document.getElementById('previewModalLabel');
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -393,6 +436,32 @@
           }
         });
       });
+
+      // Event listener for document preview links
+      chat.addEventListener('click', function(event) {
+          // Check if the clicked element is a preview link
+          const link = event.target.closest('.doc-preview-link');
+          if (link) {
+              event.preventDefault(); // Stop default link behavior
+              const docId = link.dataset.docId;
+              const filename = link.dataset.filename;
+              console.log(`Preview requested for doc ID: ${docId}, Filename: ${filename}`); // Debugging
+
+              if (docId) {
+                  // Set iframe source to the preview endpoint
+                  previewFrame.src = `{{ url_for('preview_file', doc_id=0) }}`.replace('/0', `/${docId}`);
+                  // Update modal title
+                  previewModalLabel.textContent = filename || 'Document Preview';
+                  // Show the modal
+                  previewModal.show();
+              } else {
+                console.error('Document ID not found on link:', link);
+              }
+          }
+      });
+
+      // Initial scroll to bottom
+      chat.scrollTop = chat.scrollHeight;
     </script>
   </body>
 </html>

@@ -5,10 +5,12 @@ from dotenv import load_dotenv
 import os
 import requests
 import markdown
+import markdown2
 from datetime import datetime, timedelta
 from openai import AzureOpenAI
 from werkzeug.utils import secure_filename
 from markdown import markdown as md_to_html
+import re
 
 # --- App Setup ---
 load_dotenv()
@@ -103,10 +105,63 @@ def send_message():
     save_message(user, "user", prompt, session_id)
 
     response = requests.post(f"{API_BASE_URL}/query", json={"query": prompt, "top_k": 3})
-    results = response.json()["results"]
-    context = "\n\n".join([r["content"] for r in results])
+    response.raise_for_status()
+    backend_results = response.json().get("results", [])
 
-    refined_prompt = f"Answer the user's question clearly based on this context:\n\nContext:\n{context}\n\nQuestion: {prompt}"
+    # Format context including source metadata
+    context_parts = []
+    sources = set() # Keep track of unique sources
+    for r in backend_results:
+        content = r.get("content", "")
+        metadata = r.get("metadata", {})
+        source_filename = metadata.get("source", "Unknown Source")
+        # Optional: Add chunk ID if needed later, e.g., f"{source_filename} (Chunk: {metadata.get('chunk_id', '?')})"
+        context_parts.append(f"[Source: {source_filename}]\nContent: {content}")
+        sources.add(source_filename)
+
+    context = "\\n\\n".join(context_parts)
+    source_list = ", ".join(sorted(list(sources))) if sources else "the provided documents"
+
+    # --- Dynamic Prompt Instructions based on source count ---
+    if len(sources) == 1:
+        single_source_filename = list(sources)[0]
+        prompt_instructions = (
+            f'Instructions:\n'
+            f'- Answer clearly and concisely using information *only* from the context provided.\n'
+            f'- After providing the answer, add a single citation for the source document at the very end, like this: (Source: {single_source_filename}).\n'
+            f'- If the answer isn\'t in the context, say "I cannot answer this question based on the provided document: {single_source_filename}.".\n'
+            f'- Use markdown formatting if helpful (bolding, lists), but do NOT use tables.\n'
+            f'- Do not add any preamble like "Based on the context..." unless necessary for clarity.'
+        )
+    elif len(sources) > 1:
+        prompt_instructions = (
+            f'Instructions:\n'
+            f'- Answer clearly and concisely using information *only* from the context provided.\n'
+            f'- **Cite the source filename** (e.g., `(filename.pdf)`) immediately after *every* piece of information used from the context.\n'
+            f'- If multiple sources support a statement, you can cite them like `(file1.pdf, file2.txt)`.\n'
+            f'- If the answer isn\'t in the context, say "I cannot answer this question based on the provided documents: {source_list}.".\n'
+            f'- Use markdown formatting if helpful (bolding, lists), but do NOT use tables.\n'
+            f'- Do not add any preamble like "Based on the context..." unless necessary for clarity.'
+        )
+    else: # No sources found in context (edge case)
+        prompt_instructions = (
+            'Instructions:\n'
+            '- State that you cannot answer the question because no relevant context was found in the documents.'
+        )
+    # --- End Dynamic Prompt Instructions ---
+
+    refined_prompt = f"""
+You are a helpful AI assistant for RefiDoc. Answer the user's question based *only* on the provided context segments below.
+Follow the specific instructions provided.
+
+Context from documents:
+{context}
+
+User Question:
+{prompt}
+
+{prompt_instructions}
+"""
 
     gpt_response = client.chat.completions.create(
         model=AZURE_DEPLOYMENT_NAME,
@@ -117,10 +172,32 @@ def send_message():
     )
 
     raw_answer = gpt_response.choices[0].message.content
-    answer = md_to_html(raw_answer) 
-    save_message(user, "assistant", answer, session_id)
+    
+    # Convert markdown to HTML first
+    html_answer = md_to_html(raw_answer)
 
-    return jsonify({"response": answer})
+    # Find citations and replace with links
+    def replace_citation(match):
+        filename = match.group(1)
+        # Query the database for the document ID
+        doc = Document.query.filter_by(filename=filename).order_by(Document.version.desc()).first()
+        if doc:
+            # Create a link that triggers the preview modal
+            return f'(<a href="#" class="doc-preview-link" data-doc-id="{doc.id}" data-filename="{doc.filename}">{filename}</a>)'
+        else:
+            # If document not found, return the original text (or just filename)
+            return f'({filename})' # Keep parentheses
+
+    # Regex to find citations like (filename.pdf) or (filename_v2.txt)
+    # It looks for parentheses containing characters allowed in filenames (letters, numbers, _, -, .)
+    # and ensures it ends with a common document extension (.pdf, .txt etc. - adjust if needed)
+    citation_pattern = r'\( *([\w\-]+\.?(?:pdf|txt|docx|md|csv)) *\)'
+    processed_answer = re.sub(citation_pattern, replace_citation, html_answer)
+    
+    # Save the processed answer with HTML links
+    save_message(user, "assistant", processed_answer, session_id)
+
+    return jsonify({"response": processed_answer})
 
 # --- Routes ---
 @app.route("/", methods=["GET", "POST"])
@@ -183,6 +260,11 @@ def chat():
 
     messages = ChatMessage.query.filter_by(session_id=chat_session.id).order_by(ChatMessage.timestamp).all()
     sessions = ChatSession.query.filter_by(user_id=user.id).order_by(ChatSession.created_at.desc()).all()
+    
+    for msg in messages:
+        if msg.role == "assistant":
+            msg.content = markdown2.markdown(msg.content)
+
 
     return render_template(
         "chat.html",
